@@ -32,7 +32,7 @@ func init() {
 	mysqlDatabase := os.Getenv("MYSQL_DATABASE")
 
 	connStr := fmt.Sprintf("%s:%s@%s/%s", mysqlUser, mysqlPwd, mysqlHost, mysqlDatabase)
-	db, err := sql.Open("mysql", connStr)
+	_, err := sql.Open("mysql", connStr)
 
 	// ①-2
 	_db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@(localhost:3306)/%s", mysqlUser, mysqlPwd, mysqlDatabase))
@@ -106,7 +106,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//データベースにinsert
-		insert, err := db.Prepare("BEGIN; INSERT INTO user(id,name, age) VALUES (?,?,?)); COMMIT;")
+		insert, err := db.Prepare("BEGIN; INSERT INTO user(id,name, age) VALUES (?,?,?); COMMIT;")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
