@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	"github.com/oklog/ulid/v2"
 	"log"
 	"math/rand"
@@ -26,8 +27,12 @@ var db *sql.DB
 
 func init() {
 	// ①-1
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("fail: loadfailed, %v\n", err)
+	}
 	mysqlUser := os.Getenv("MYSQL_USER")
-	mysqlUserPwd := os.Getenv("MYSQL_PASSWORD")
+	mysqlUserPwd := os.Getenv("MYSQL_PWD")
 	mysqlHost := os.Getenv("MYSQL_HOST")
 	mysqlDatabase := os.Getenv("MYSQL_DATABASE")
 
