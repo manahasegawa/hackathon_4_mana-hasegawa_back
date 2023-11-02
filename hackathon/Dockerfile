@@ -1,11 +1,7 @@
 FROM golang:1.18 as build
-
+WORKDIR /
 # ホストOSのカレントディレクトリにあるすべてのファイルをコンテナ内にコピー
 COPY . /
-
-# コンテナ内で作業するディレクトリを指定
-WORKDIR /
-RUN go mod init && go mod tidy
 # コンテナの起動時に実行するコマンドを指定
 CMD ["go", "run", "main.go"]
 
