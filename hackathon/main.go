@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 	"github.com/oklog/ulid/v2"
 	"log"
 	"math/rand"
@@ -26,12 +27,11 @@ var db *sql.DB
 
 func init() {
 	// ①-1
-	/*err := godotenv.Load(".env")
+	err := godotenv.Load(".env")
 	if err != nil {
 		log.Fatalf("fail: loadfailed, %v\n", err)
 	}
 
-	*/
 	mysqlUser := os.Getenv("MYSQL_USER")
 	mysqlUserPwd := os.Getenv("MYSQL_PWD")
 	mysqlHost := os.Getenv("MYSQL_HOST")
@@ -100,16 +100,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		id := ulid.MustNew(ulid.Timestamp(t), entropy)
 
 		var postData struct {
-			inname string `json:"name"`
-			inage  int    `json:"age"`
+			title       string `json:"title"`
+			category    string `json:"category"`
+			curriculum  string `json:"curriculum"`
+			explanation string `json:"explanation"`
 		}
 
-		if postData.inname == "" || postData.inage > 50 || postData.inage < 20 || postData.inage > 80 {
+		if postData.title == "" || postData.category == "" || postData.curriculum == "" || postData.explanation == "" {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
 		//データベースにinsert
-		insert, err := db.Prepare("BEGIN; INSERT INTO user(id,name, age) VALUES (?,?,?); COMMIT;")
+		insert, err := db.Prepare("BEGIN; INSERT INTO item(id,title,category_id,explanation,) VALUES (?,?,?); COMMIT;")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
