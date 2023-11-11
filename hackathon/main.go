@@ -16,10 +16,14 @@ import (
 	"time"
 )
 
-type UserResForHTTPGet struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
+// アイテムの型構造を定義
+type ItemResForHTTPGet struct {
+	Id          string `json:"id"`
+	Title       string `json:"title"`
+	Explanation string `json:"explanation"`
+	Time        string `json:"time"`
+	Category    string `json:"category"`
+	Curriculum  string `json:"curriculum"`
 }
 
 // ① GoプログラムからMySQLへ接続
@@ -49,29 +53,37 @@ func init() {
 	db = _db
 }
 
-// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
 func handler(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	//この行を入れたらエラーが消えた
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	switch r.Method {
+	//リクエストされたらアイテムのレコードをJSON形式で返す
 	case http.MethodGet:
-		// ②-1
-		name := r.URL.Query().Get("name") // To be filled
-		if name == "" {
-			log.Println("fail: name is empty")
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		rows, err := db.Query("SELECT id, name, age FROM user WHERE name = ?", name)
+
+		//GETのクエリ文を定義
+		rows, err := db.Query(
+			"BEGIN; SELECT i.title, i.explanation ,i.time, ca.category ,cu.curriculum  FROM item AS i JOIN category as ca ON i.category_id = ca.id JOIN curriculum AS cu ON i.curriculum_id = cu.id; COMMIT;")
 		if err != nil {
 			log.Printf("fail: db.Query, %v\n", err)
+
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		// ②-3
-		users := make([]UserResForHTTPGet, 0)
+		// アイテムをリストに格納する
+		items := make([]ItemResForHTTPGet, 0)
 		for rows.Next() {
-			var u UserResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Age); err != nil {
+			var u ItemResForHTTPGet
+			if err := rows.Scan(&u.Id, &u.Title, &u.Explanation, &u.Time, &u.Category, &u.Curriculum); err != nil {
 				log.Printf("fail: rows.Scan, %v\n", err)
 
 				if err := rows.Close(); err != nil { // 500を返して終了するが、その前にrowsのClose処理が必要
@@ -80,11 +92,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			users = append(users, u)
+			items = append(items, u)
 		}
-
-		// ②-4
-		bytes, err := json.Marshal(users)
+		bytes, err := json.Marshal(items)
 		if err != nil {
 			log.Printf("fail: json.Marshal, %v\n", err)
 			w.WriteHeader(http.StatusInternalServerError)
@@ -111,7 +121,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//データベースにinsert
-		insert, err := db.Prepare("BEGIN; INSERT INTO item(id,title,category_id,explanation,time) VALUES (?,?,?,?,CURRENT_TIMESTAMP);  COMMIT;")
+		insert, err := db.Prepare("BEGIN; INSERT INTO item(id,title,category_id,explanation,time,curriculum_id) VALUES (?,?,?,?,CURRENT_TIMESTAMP,?);  COMMIT;")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -126,9 +136,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			}
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(bytes)
-
 		}
-		insert.Exec(id, postData.title)
+
+		insert.Exec(id, postData.title, postData.category, postData.explanation, postData.curriculum)
 
 	default:
 		log.Printf("fail: HTTP Method is %s\n", r.Method)
