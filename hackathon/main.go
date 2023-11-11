@@ -16,7 +16,6 @@ import (
 	"time"
 )
 
-// アイテムの型構造を定義
 type ItemResForHTTPGet struct {
 	Id          string `json:"id"`
 	Title       string `json:"title"`
@@ -71,7 +70,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		//GETのクエリ文を定義
 		rows, err := db.Query(
-			"BEGIN; SELECT i.title, i.explanation ,i.time, ca.category ,cu.curriculum  FROM item AS i JOIN category as ca ON i.category_id = ca.id JOIN curriculum AS cu ON i.curriculum_id = cu.id; COMMIT;")
+			"SELECT i.title, i.explanation ,i.time, ca.category ,cu.curriculum  FROM item AS i JOIN category AS ca ON i.category_id = ca.id JOIN curriculum AS cu ON i.curriculum_id = cu.id;")
 		if err != nil {
 			log.Printf("fail: db.Query, %v\n", err)
 
@@ -83,7 +82,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		items := make([]ItemResForHTTPGet, 0)
 		for rows.Next() {
 			var u ItemResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Title, &u.Explanation, &u.Time, &u.Category, &u.Curriculum); err != nil {
+			if err := rows.Scan(&u.Title, &u.Explanation, &u.Time, &u.Category, &u.Curriculum); err != nil {
 				log.Printf("fail: rows.Scan, %v\n", err)
 
 				if err := rows.Close(); err != nil { // 500を返して終了するが、その前にrowsのClose処理が必要
@@ -105,40 +104,40 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 
+		type postData struct {
+			Title         string `json:"title"`
+			Category_id   int    `json:"category"`
+			Curriculum_id int    `json:"curriculum"`
+			Explanation   string `json:"explanation"`
+		}
+
 		t := time.Now()
 		entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
 		id := ulid.MustNew(ulid.Timestamp(t), entropy)
 
-		var postData struct {
-			title       string `json:"title"`
-			category    string `json:"category"`
-			curriculum  string `json:"curriculum"`
-			explanation string `json:"explanation"`
+		// HTTPリクエストボディからJSONデータを読み取る
+		decoder := json.NewDecoder(r.Body)
+		var readData postData
+		if err := decoder.Decode(&readData); err != nil {
+
+			log.Printf("fail: json.Decode, %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
-		if postData.title == "" || postData.category == "" || postData.curriculum == "" || postData.explanation == "" {
+		if readData.Title == "" || readData.Explanation == "" {
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
 		//データベースにinsert
-		insert, err := db.Prepare("BEGIN; INSERT INTO item(id,title,category_id,explanation,time,curriculum_id) VALUES (?,?,?,?,CURRENT_TIMESTAMP,?);  COMMIT;")
+		_, err := db.Exec(
+			"INSERT INTO item(id,title,category_id,explanation,curriculum_id,time) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP);",
+			id.String(), readData.Title, readData.Category_id, readData.Explanation, readData.Curriculum_id)
 		if err != nil {
+			log.Printf("insert err")
 			w.WriteHeader(http.StatusBadRequest)
 			return
-		} else {
-			w.WriteHeader(http.StatusOK)
-			response := map[string]string{"id": id.String()}
-			bytes, err := json.Marshal(response)
-			if err != nil {
-				log.Printf("fail: json.Marshal, %v\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(bytes)
 		}
-
-		insert.Exec(id, postData.title, postData.category, postData.explanation, postData.curriculum)
 
 	default:
 		log.Printf("fail: HTTP Method is %s\n", r.Method)
@@ -149,7 +148,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
-	http.HandleFunc("/user", handler)
+	http.HandleFunc("/", handler)
 
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
@@ -159,7 +158,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8000"
 	}
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
