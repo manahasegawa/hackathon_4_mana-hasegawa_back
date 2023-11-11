@@ -17,13 +17,15 @@ import (
 )
 
 // アイテムの型構造を定義
+
 type ItemResForHTTPGet struct {
 	Id          string `json:"id"`
 	Title       string `json:"title"`
 	Explanation string `json:"explanation"`
 	Time        string `json:"time"`
 	Category    string `json:"category"`
-	Tag         string `json:"tag"`
+
+	Curriculum string `json:"curriculum"`
 }
 
 // ① GoプログラムからMySQLへ接続
@@ -71,9 +73,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		//GETのクエリ文を定義
 		rows, err := db.Query(
-			"SELECT e.id, e.title, e.explanation, e.time,e.category, f.tag FROM ( SELECT  a.*, b.category FROM item AS a JOIN category AS b ON a.category_id = b.id) AS e JOIN ( SELECT c.*, d.curriculum AS tag FROM itemtocurriculum AS c JOIN curriculum AS d ON c.curriculum_id = d.id ) AS f ON e.id = f.item_id;")
+
+			"SELECT i.title, i.explanation ,i.time, ca.category ,cu.curriculum  FROM item AS i JOIN category AS ca ON i.category_id = ca.id JOIN curriculum AS cu ON i.curriculum_id = cu.id;")
+
 		if err != nil {
 			log.Printf("fail: db.Query, %v\n", err)
+
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -82,7 +87,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		items := make([]ItemResForHTTPGet, 0)
 		for rows.Next() {
 			var u ItemResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Title, &u.Explanation, &u.Time, &u.Category, &u.Tag); err != nil {
+
+			if err := rows.Scan(&u.Title, &u.Explanation, &u.Time, &u.Category, &u.Curriculum); err != nil {
+
 				log.Printf("fail: rows.Scan, %v\n", err)
 
 				if err := rows.Close(); err != nil { // 500を返して終了するが、その前にrowsのClose処理が必要
@@ -104,48 +111,43 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPost:
 
+		type postData struct {
+			Title         string `json:"title"`
+			Category_id   int    `json:"category"`
+			Curriculum_id int    `json:"curriculum"`
+			Explanation   string `json:"explanation"`
+		}
+
 		t := time.Now()
 		entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
 		id := ulid.MustNew(ulid.Timestamp(t), entropy)
-		itemtocid := ulid.MustNew(ulid.Timestamp(t), entropy)
 
-		var postItem struct {
-			Title         string `json:"title"`
-			Explanation   string `json:"explanation"`
-			Time          string `json:"time"`
-			Category_id   int    `json:"category_id"`
-			Tag           string `json:"tag"`
-			Curriculum_id int    `json:"curriculum_id"`
+		// HTTPリクエストボディからJSONデータを読み取る
+		decoder := json.NewDecoder(r.Body)
+		var readData postData
+		if err := decoder.Decode(&readData); err != nil {
+
+			log.Printf("fail: json.Decode, %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 
-		if postItem.Title == "" || postItem.Explanation == "" || postItem.Tag == "" {
+		if readData.Title == "" || readData.Explanation == "" {
+
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
 		//データベースにinsert
-		insert, err := db.Prepare(
-			"BEGIN;INSERT INTO item(id,title,category_id,explanation,time) VALUES (?,?,?,?,CURRENT_TIMESTAMP); INSERT INTO itemtocurriculum(id, item_id, curriculum_id) VALUES (?,?,?); COMMIT;")
+
+		_, err := db.Exec(
+			"INSERT INTO item(id,title,category_id,explanation,curriculum_id,time) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP);",
+			id.String(), readData.Title, readData.Category_id, readData.Explanation, readData.Curriculum_id)
+
 		if err != nil {
+			log.Printf("insert err")
 			w.WriteHeader(http.StatusBadRequest)
 			return
-		} else {
-			w.WriteHeader(http.StatusOK)
-			response := map[string]string{"id": id.String()}
-			bytes, err := json.Marshal(response)
-			if err != nil {
-				log.Printf("fail: json.Marshal, %v\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(bytes)
-
 		}
-		insert.Exec(id, postItem.Title, postItem.Category_id, postItem.Explanation, itemtocid, id, postItem.Curriculum_id)
-
-	//case http.MethodDelete:
-
-	//case http.MethodPatch:
 
 	default:
 		log.Printf("fail: HTTP Method is %s\n", r.Method)
