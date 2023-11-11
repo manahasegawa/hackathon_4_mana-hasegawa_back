@@ -16,7 +16,6 @@ import (
 	"time"
 )
 
-
 // アイテムの型構造を定義
 
 type ItemResForHTTPGet struct {
@@ -26,8 +25,7 @@ type ItemResForHTTPGet struct {
 	Time        string `json:"time"`
 	Category    string `json:"category"`
 
-	Curriculum  string `json:"curriculum"`
-
+	Curriculum string `json:"curriculum"`
 }
 
 // ① GoプログラムからMySQLへ接続
@@ -78,7 +76,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 			"SELECT i.title, i.explanation ,i.time, ca.category ,cu.curriculum  FROM item AS i JOIN category AS ca ON i.category_id = ca.id JOIN curriculum AS cu ON i.curriculum_id = cu.id;")
 
-		
 		if err != nil {
 			log.Printf("fail: db.Query, %v\n", err)
 
@@ -124,7 +121,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		t := time.Now()
 		entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
 		id := ulid.MustNew(ulid.Timestamp(t), entropy)
-
 
 		// HTTPリクエストボディからJSONデータを読み取る
 		decoder := json.NewDecoder(r.Body)
