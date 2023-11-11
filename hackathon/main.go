@@ -16,13 +16,18 @@ import (
 	"time"
 )
 
+
+// アイテムの型構造を定義
+
 type ItemResForHTTPGet struct {
 	Id          string `json:"id"`
 	Title       string `json:"title"`
 	Explanation string `json:"explanation"`
 	Time        string `json:"time"`
 	Category    string `json:"category"`
+
 	Curriculum  string `json:"curriculum"`
+
 }
 
 // ① GoプログラムからMySQLへ接続
@@ -70,7 +75,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		//GETのクエリ文を定義
 		rows, err := db.Query(
+
 			"SELECT i.title, i.explanation ,i.time, ca.category ,cu.curriculum  FROM item AS i JOIN category AS ca ON i.category_id = ca.id JOIN curriculum AS cu ON i.curriculum_id = cu.id;")
+
+		
 		if err != nil {
 			log.Printf("fail: db.Query, %v\n", err)
 
@@ -82,7 +90,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		items := make([]ItemResForHTTPGet, 0)
 		for rows.Next() {
 			var u ItemResForHTTPGet
+
 			if err := rows.Scan(&u.Title, &u.Explanation, &u.Time, &u.Category, &u.Curriculum); err != nil {
+
 				log.Printf("fail: rows.Scan, %v\n", err)
 
 				if err := rows.Close(); err != nil { // 500を返して終了するが、その前にrowsのClose処理が必要
@@ -115,6 +125,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
 		id := ulid.MustNew(ulid.Timestamp(t), entropy)
 
+
 		// HTTPリクエストボディからJSONデータを読み取る
 		decoder := json.NewDecoder(r.Body)
 		var readData postData
@@ -126,13 +137,16 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if readData.Title == "" || readData.Explanation == "" {
+
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
 		//データベースにinsert
+
 		_, err := db.Exec(
 			"INSERT INTO item(id,title,category_id,explanation,curriculum_id,time) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP);",
 			id.String(), readData.Title, readData.Category_id, readData.Explanation, readData.Curriculum_id)
+
 		if err != nil {
 			log.Printf("insert err")
 			w.WriteHeader(http.StatusBadRequest)
