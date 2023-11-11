@@ -111,7 +111,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		//データベースにinsert
-		insert, err := db.Prepare("BEGIN; INSERT INTO item(id,title,category_id,explanation,) VALUES (?,?,?); COMMIT;")
+		insert, err := db.Prepare("BEGIN; INSERT INTO item(id,title,category_id,explanation,time) VALUES (?,?,?,?,CURRENT_TIMESTAMP);  COMMIT;")
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
@@ -128,7 +128,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			w.Write(bytes)
 
 		}
-		insert.Exec(id, postData.inname, postData.inage)
+		insert.Exec(id, postData.title)
 
 	default:
 		log.Printf("fail: HTTP Method is %s\n", r.Method)
