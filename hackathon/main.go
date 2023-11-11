@@ -6,11 +6,14 @@ import (
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/joho/godotenv"
+	"github.com/oklog/ulid/v2"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 // アイテムの型構造を定義
@@ -99,48 +102,46 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(bytes)
 
-	/*case http.MethodPost:
+	case http.MethodPost:
 
-	t := time.Now()
-	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
-	id := ulid.MustNew(ulid.Timestamp(t), entropy)
-	itemtocid := ulid.MustNew(ulid.Timestamp(t), entropy)
+		t := time.Now()
+		entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+		id := ulid.MustNew(ulid.Timestamp(t), entropy)
+		itemtocid := ulid.MustNew(ulid.Timestamp(t), entropy)
 
-	var postItem struct {
-		Title         string `json:"title"`
-		Explanation   string `json:"explanation"`
-		Time          string `json:"time"`
-		Category_id   int    `json:"category_id"`
-		Tag           string `json:"tag"`
-		Curriculum_id int    `json:"curriculum_id"`
-	}
-
-	if postItem.Title == "" || postItem.Explanation == "" || postItem.Tag == "" {
-		w.WriteHeader(http.StatusBadRequest)
-	}
-
-	//データベースにinsert
-	insert, err := db.Prepare(
-		"BEGIN;INSERT INTO item(id,title,category_id,explanation,time) VALUES (?,?,?,?,CURRENT_TIMESTAMP); INSERT INTO itemtocurriculum(id, item_id, curriculum_id) VALUES (?,?,?); COMMIT;")
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	} else {
-		w.WriteHeader(http.StatusOK)
-		response := map[string]string{"id": id.String()}
-		bytes, err := json.Marshal(response)
-		if err != nil {
-			log.Printf("fail: json.Marshal, %v\n", err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+		var postItem struct {
+			Title         string `json:"title"`
+			Explanation   string `json:"explanation"`
+			Time          string `json:"time"`
+			Category_id   int    `json:"category_id"`
+			Tag           string `json:"tag"`
+			Curriculum_id int    `json:"curriculum_id"`
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(bytes)
 
-	}
-	insert.Exec(id, postItem.Title, postItem.Category_id, postItem.Explanation, itemtocid, id, postItem.Curriculum_id)
+		if postItem.Title == "" || postItem.Explanation == "" || postItem.Tag == "" {
+			w.WriteHeader(http.StatusBadRequest)
+		}
 
-	*/
+		//データベースにinsert
+		insert, err := db.Prepare(
+			"BEGIN;INSERT INTO item(id,title,category_id,explanation,time) VALUES (?,?,?,?,CURRENT_TIMESTAMP); INSERT INTO itemtocurriculum(id, item_id, curriculum_id) VALUES (?,?,?); COMMIT;")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		} else {
+			w.WriteHeader(http.StatusOK)
+			response := map[string]string{"id": id.String()}
+			bytes, err := json.Marshal(response)
+			if err != nil {
+				log.Printf("fail: json.Marshal, %v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(bytes)
+
+		}
+		insert.Exec(id, postItem.Title, postItem.Category_id, postItem.Explanation, itemtocid, id, postItem.Curriculum_id)
 
 	//case http.MethodDelete:
 
