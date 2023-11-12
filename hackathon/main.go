@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
 	"github.com/oklog/ulid/v2"
 	"log"
 	"math/rand"
@@ -32,11 +31,14 @@ type ItemResForHTTPGet struct {
 var db *sql.DB
 
 func init() {
-	// ①-1
-	err := godotenv.Load(".env")
-	if err != nil {
-		log.Fatalf("fail: loadfailed, %v\n", err)
-	}
+	/*
+		// ①-1
+		err := godotenv.Load(".env")
+		if err != nil {
+			log.Fatalf("fail: loadfailed, %v\n", err)
+		}
+
+	*/
 
 	mysqlUser := os.Getenv("MYSQL_USER")
 	mysqlUserPwd := os.Getenv("MYSQL_PWD")
@@ -57,7 +59,7 @@ func init() {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 
-	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+	w.Header().Set("Access-Control-Allow-Origin", "https://hackathon-4-mana-hasegawa-front.vercel.app/")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
@@ -168,7 +170,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8000"
+		port = "8080"
 	}
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
