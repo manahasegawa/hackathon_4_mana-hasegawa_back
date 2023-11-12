@@ -62,9 +62,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Headers", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE,OPTION")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Origin", "https://hackathon-4-mana-hasegawa-front.vercel.app/")
 	w.Header().Set("Access-Control-Allow-Origin", "hackathon-4-mana-hasegawa-back-mbuoyt5akq-uc.a.run.app/")
-	
+
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	//w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	//w.Header().Set("Access-Control-Allow-Headers", "*")
