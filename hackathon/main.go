@@ -59,7 +59,7 @@ func init() {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 
-	w.Header().Set("Access-Control-Allow-Origin", "https://hackathon-4-mana-hasegawa-front.vercel.app/")
+	w.Header().Set("Access-Control-Allow-Origin", "https://hackathon-4-mana-hasegawa-fro-git-c66531-manahasegawas-projects.vercel.app/")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
