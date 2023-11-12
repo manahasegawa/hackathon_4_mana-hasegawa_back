@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -59,8 +60,10 @@ func init() {
 
 func handler(w http.ResponseWriter, r *http.Request) {
 
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	//この行を入れたらエラーが消えた
@@ -114,10 +117,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPost:
 
 		type postData struct {
-			Title         string `json:"title"`
-			Category_id   int    `json:"category"`
-			Curriculum_id int    `json:"curriculum"`
-			Explanation   string `json:"explanation"`
+			Title        string `json:"title"`
+			Categoryid   string `json:"category"`
+			Curriculumid string `json:"curriculum"`
+			Explanation  string `json:"explanation"`
 		}
 
 		t := time.Now()
@@ -134,6 +137,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		fmt.Printf("%", readData)
+
 		if readData.Title == "" || readData.Explanation == "" {
 
 			w.WriteHeader(http.StatusBadRequest)
@@ -141,15 +146,42 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 		//データベースにinsert
 
+		var Intcategoryid, _ = strconv.ParseInt(readData.Categoryid, 10, 32)
+		var Intcurriculumid, _ = strconv.ParseInt(readData.Curriculumid, 10, 32)
 		_, err := db.Exec(
 			"INSERT INTO item(id,title,category_id,explanation,curriculum_id,time) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP);",
-			id.String(), readData.Title, readData.Category_id, readData.Explanation, readData.Curriculum_id)
+			id.String(), readData.Title, Intcategoryid, readData.Explanation, Intcurriculumid)
 
 		if err != nil {
 			log.Printf("insert err")
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
+	case http.MethodDelete:
+		type deleteData struct {
+			Title string `json:"title"`
+			//Categoryid   string `json:"category"`
+			//Curriculumid string `json:"curriculum"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		var deletereadData deleteData
+		if err := decoder.Decode(&deletereadData); err != nil {
+
+			log.Printf("fail: json.Decode, %v\n", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		delete, err := db.Prepare(
+			"DELETE FROM item WHERE title=? ;")
+		if err != nil {
+			log.Printf("delete err")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		delete.Exec(deletereadData.Title)
 
 	default:
 		log.Printf("fail: HTTP Method is %s\n", r.Method)
